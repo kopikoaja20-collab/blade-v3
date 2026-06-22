@@ -1,0 +1,85 @@
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- Variables
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local userInputService = game:GetService("UserInputService")
+local replicatedStorage = game:GetService("ReplicatedStorage")
+
+-- GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player.PlayerGui
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Parent = screenGui
+textLabel.Size = UDim2.new(1, 0, 1, 0)
+textLabel.BackgroundTransparency = 1
+textLabel.FontSize = Enum.FontSize.Size24
+textLabel.TextColor3 = Color3.new(1, 1, 1)
+textLabel.Text = "Auto Parry: Off"
+
+-- Configuration
+local autoParryEnabled = false
+local spamParryEnabled = false
+local parryKey = Enum.KeyCode.E
+
+-- Functions
+local function parry()
+    local parryEvent = ReplicatedStorage:FindFirstChild("ParryEvent")
+    if parryEvent then
+        parryEvent:FireServer()
+    end
+end
+
+local function toggleAutoParry()
+    autoParryEnabled = not autoParryEnabled
+    textLabel.Text = "Auto Parry: " .. (autoParryEnabled and "On" or "Off")
+end
+
+local function toggleSpamParry()
+    spamParryEnabled = not spamParryEnabled
+    if spamParryEnabled then
+        while true do
+            parry()
+            wait(0.1)
+        end
+    else
+        -- Stop spam parry loop
+    end
+end
+
+-- Event Listeners
+userInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == parryKey then
+        parry()
+    elseif input.KeyCode == Enum.KeyCode.F1 then
+        toggleAutoParry()
+    elseif input.KeyCode == Enum.KeyCode.F2 then
+        toggleSpamParry()
+    end
+end)
+
+-- Auto Parry
+local bladeBall = ReplicatedStorage:WaitForChild("BladeBall")
+local function onBladeBallTouched(hit)
+    if autoParryEnabled and hit.Parent:FindFirstChild("Humanoid") then
+        parry()
+    end
+end
+
+bladeBall.Touched:Connect(onBladeBallTouched)
+
+-- Cleanup
+local function onCharacterRemoving(character)
+    for _, child in pairs(character:GetChildren()) do
+        if child:IsA("BasePart") then
+            child.Touched:Disconnect(onBladeBallTouched)
+        end
+    end
+end
+
+character.Removed:Connect(onCharacterRemoving)
